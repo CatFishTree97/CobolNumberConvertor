@@ -1,0 +1,280 @@
+IDENTIFICATION DIVISION.
+PROGRAM-ID. NUMBER_CONVERTOR.
+DATA DIVISION.
+    WORKING-STORAGE SECTION.
+        01 USER-IN PIC X(20) VALUE "00H".
+        01 CAP PIC S9(2) VALUE 1.
+        01 ACTUAL-LEN PIC 9(2) VALUE 30.
+        01 CURRENT-CHAR PIC X(1).
+        01 CURRENT-NUM PIC 9(2).
+        01 CHAR-LIST.
+            05 CHAR-ENTRY OCCURS 30 TIMES PIC X(1).
+        01 CURRENT-CONVERTED-NUM PIC 9(4).
+        01 CURRENT-CONVERTED-NUM-SMALL PIC 9(1).
+        01 TRIMMED-INPUT PIC X(20).
+        01 USER-OUT PIC X(20) VALUE "00H".
+        01 NUM-DIGITS PIC 9(2).
+        01 IS-BINARY PIC 9(1) VALUE 0.
+        01 IS-HEXADECIMAL PIC 9(1) VALUE 0.
+        01 IS-DECIMAL PIC 9(1) VALUE 0.
+        01 OPERATION PIC A(1).
+        01 INDX PIC 9(2) VALUE 1.
+        01 LIST-LEN PIC 9(2) VALUE 0.
+        01 EXPONENT PIC 9(2) VALUE 0.
+        01 MYSUM PIC 9(8) VALUE 0.
+        01 QUOTIENT PIC 9(8) VALUE 0.
+        01 CONT PIC 9(1) VALUE 1.
+        01 REMAIND PIC X(1).
+PROCEDURE DIVISION.
+    DISPLAY "Enter a number. Please use the prefix 0b for binary and 0x for hexadecimal.".
+    ACCEPT USER-IN.
+    INSPECT USER-IN TALLYING IS-BINARY FOR LEADING "0b".
+    INSPECT USER-IN TALLYING IS-HEXADECIMAL FOR LEADING "0x".
+    IF IS-BINARY IS NOT EQUAL TO 0
+        DISPLAY "Enter D to convert to decimal."
+        DISPLAY "Enter H to convert to hexadecimal."
+    .
+    IF IS-HEXADECIMAL IS NOT EQUAL TO 0
+        DISPLAY "Enter B to convert to binary."
+        DISPLAY "Enter D to convert to decimal."
+    .
+    IF IS-BINARY EQUAL 0 AND IS-HEXADECIMAL EQUAL 0
+        DISPLAY "Enter B to convert to binary."
+        DISPLAY "Enter H to convert to hexadecimal."
+        MOVE 1 TO IS-DECIMAL
+    .
+    ACCEPT OPERATION.
+    IF OPERATION EQUAL "D"
+        IF IS-HEXADECIMAL IS NOT EQUAL TO 0
+            INSPECT USER-IN REPLACING LEADING "0x" BY "  "
+            MOVE FUNCTION TRIM(USER-IN) TO TRIMMED-INPUT
+            COMPUTE ACTUAL-LEN =
+               FUNCTION LENGTH(TRIMMED-INPUT)
+            PERFORM VARYING INDX FROM ACTUAL-LEN BY -1
+                UNTIL INDX < CAP
+                MOVE TRIMMED-INPUT(INDX:1) TO CURRENT-CHAR
+                IF CURRENT-CHAR NOT = SPACE
+                    IF CURRENT-CHAR IS ALPHABETIC
+                        EVALUATE CURRENT-CHAR
+                            WHEN "A"
+                                MOVE 10 TO CURRENT-NUM
+                            WHEN "B"
+                                MOVE 11 TO CURRENT-NUM
+                            WHEN "C"
+                                MOVE 12 TO CURRENT-NUM
+                            WHEN "D"
+                                MOVE 13 TO CURRENT-NUM
+                            WHEN "E"
+                                MOVE 14 TO CURRENT-NUM
+                            WHEN "F"
+                                MOVE 15 TO CURRENT-NUM
+                        END-EVALUATE
+                        COMPUTE CURRENT-CONVERTED-NUM = CURRENT-NUM * (16 ** EXPONENT)
+                        ADD 1 TO EXPONENT
+                        ADD 1 TO LIST-LEN
+                        STRING CURRENT-CONVERTED-NUM DELIMITED BY SIZE
+                            INTO CHAR-LIST
+                            WITH POINTER LIST-LEN
+                        COMPUTE MYSUM = MYSUM + CURRENT-CONVERTED-NUM
+                    ELSE
+                        IF CURRENT-CHAR IS NUMERIC
+                            MOVE CURRENT-CHAR TO CURRENT-NUM
+                            COMPUTE CURRENT-CONVERTED-NUM = CURRENT-NUM * (16 ** EXPONENT)
+                            ADD 1 TO EXPONENT
+                            ADD 1 TO LIST-LEN
+                            STRING CURRENT-CONVERTED-NUM DELIMITED BY SIZE
+                                INTO CHAR-LIST
+                                WITH POINTER LIST-LEN
+                            COMPUTE MYSUM = MYSUM + CURRENT-CONVERTED-NUM
+                        ELSE
+                            EXIT PERFORM
+            END-PERFORM
+            DISPLAY MYSUM
+        END-IF
+        IF IS-BINARY IS NOT EQUAL TO 0
+            INSPECT USER-IN REPLACING LEADING "0b" BY "  "
+            MOVE FUNCTION TRIM(USER-IN) TO TRIMMED-INPUT
+            COMPUTE ACTUAL-LEN =
+               FUNCTION LENGTH(TRIMMED-INPUT)
+            PERFORM VARYING INDX FROM ACTUAL-LEN BY -1
+                UNTIL INDX < CAP
+                MOVE TRIMMED-INPUT(INDX:1) TO CURRENT-CHAR
+                IF CURRENT-CHAR NOT = SPACE
+                    IF CURRENT-CHAR IS ALPHABETIC
+                        COMPUTE CURRENT-CONVERTED-NUM = CURRENT-NUM * (2 ** EXPONENT)
+                        ADD 1 TO EXPONENT
+                        COMPUTE MYSUM = MYSUM + CURRENT-CONVERTED-NUM
+                    ELSE
+                        IF CURRENT-CHAR IS NUMERIC
+                            MOVE CURRENT-CHAR TO CURRENT-NUM
+                            COMPUTE CURRENT-CONVERTED-NUM = CURRENT-NUM * (2 ** EXPONENT)
+                            ADD 1 TO EXPONENT
+                            COMPUTE MYSUM = MYSUM + CURRENT-CONVERTED-NUM
+                        ELSE
+                            EXIT PERFORM
+            END-PERFORM
+            DISPLAY MYSUM
+        END-IF
+    END-IF
+    IF OPERATION EQUAL "H"
+        IF IS-DECIMAL IS NOT EQUAL TO 0
+            COMPUTE QUOTIENT = FUNCTION NUMVAL(FUNCTION TRIM(USER-IN))
+            PERFORM UNTIL QUOTIENT < 1
+                ADD 1 to LIST-LEN
+                EVALUATE FUNCTION MOD(QUOTIENT, 16)
+                    WHEN 15
+                        MOVE "F" TO CHAR-ENTRY(LIST-LEN)
+                    WHEN 14
+                        MOVE "E" TO CHAR-ENTRY(LIST-LEN)
+                    WHEN 13
+                        MOVE "D" TO CHAR-ENTRY(LIST-LEN)
+                    WHEN 12
+                        MOVE "C" TO CHAR-ENTRY(LIST-LEN)
+                    WHEN 11
+                        MOVE "B" TO CHAR-ENTRY(LIST-LEN)
+                    WHEN 10
+                        MOVE "A" TO CHAR-ENTRY(LIST-LEN)
+                    WHEN OTHER
+                        MOVE FUNCTION MOD(QUOTIENT, 16) TO CURRENT-CONVERTED-NUM-SMALL
+                        MOVE CURRENT-CONVERTED-NUM-SMALL TO CHAR-ENTRY(LIST-LEN)
+                END-EVALUATE
+                COMPUTE QUOTIENT = QUOTIENT / 16
+            END-PERFORM
+            MOVE 1 TO INDX
+            PERFORM VARYING INDX FROM LIST-LEN BY -1
+                UNTIL INDX < 1
+                DISPLAY CHAR-ENTRY(INDX) WITH NO ADVANCING
+            END-PERFORM
+        END-IF
+        IF IS-BINARY IS NOT EQUAL TO 0
+            MOVE 0 TO MYSUM
+            MOVE 0 TO EXPONENT
+            INSPECT USER-IN REPLACING LEADING "0b" BY "  "
+            MOVE FUNCTION TRIM(USER-IN) TO TRIMMED-INPUT
+            COMPUTE ACTUAL-LEN =
+               FUNCTION LENGTH(TRIMMED-INPUT)
+            PERFORM VARYING INDX FROM ACTUAL-LEN BY -1
+                UNTIL INDX < CAP
+                MOVE TRIMMED-INPUT(INDX:1) TO CURRENT-CHAR
+                IF CURRENT-CHAR NOT = SPACE
+                    IF CURRENT-CHAR IS ALPHABETIC
+                        COMPUTE CURRENT-CONVERTED-NUM = CURRENT-NUM * (2 ** EXPONENT)
+                        ADD 1 TO EXPONENT
+                        COMPUTE MYSUM = MYSUM + CURRENT-CONVERTED-NUM
+                    ELSE
+                        IF CURRENT-CHAR IS NUMERIC
+                            MOVE CURRENT-CHAR TO CURRENT-NUM
+                            COMPUTE CURRENT-CONVERTED-NUM = CURRENT-NUM * (2 ** EXPONENT)
+                            ADD 1 TO EXPONENT
+                            COMPUTE MYSUM = MYSUM + CURRENT-CONVERTED-NUM
+                        ELSE
+                            EXIT PERFORM
+                        END-IF
+                    END-IF
+                END-IF
+            END-PERFORM
+    
+            MOVE 0 TO LIST-LEN
+            MOVE MYSUM TO QUOTIENT
+            PERFORM UNTIL QUOTIENT < 1
+                ADD 1 to LIST-LEN
+                EVALUATE FUNCTION MOD(QUOTIENT, 16)
+                    WHEN 15
+                        MOVE "F" TO CHAR-ENTRY(LIST-LEN)
+                    WHEN 14
+                        MOVE "E" TO CHAR-ENTRY(LIST-LEN)
+                    WHEN 13
+                        MOVE "D" TO CHAR-ENTRY(LIST-LEN)
+                    WHEN 12
+                        MOVE "C" TO CHAR-ENTRY(LIST-LEN)
+                    WHEN 11
+                        MOVE "B" TO CHAR-ENTRY(LIST-LEN)
+                    WHEN 10
+                        MOVE "A" TO CHAR-ENTRY(LIST-LEN)
+                    WHEN OTHER
+                        MOVE FUNCTION MOD(QUOTIENT, 16) TO CURRENT-CONVERTED-NUM-SMALL
+                        MOVE CURRENT-CONVERTED-NUM-SMALL TO CHAR-ENTRY(LIST-LEN)
+                END-EVALUATE
+                COMPUTE QUOTIENT = QUOTIENT / 16
+            END-PERFORM
+            MOVE 1 TO INDX
+            PERFORM VARYING INDX FROM LIST-LEN BY -1
+                UNTIL INDX < 1
+                DISPLAY CHAR-ENTRY(INDX) WITH NO ADVANCING
+            END-PERFORM
+        END-IF
+    END-IF
+    IF OPERATION EQUAL "B"
+        IF IS-DECIMAL IS NOT EQUAL TO 0
+            COMPUTE QUOTIENT = FUNCTION NUMVAL(FUNCTION TRIM(USER-IN))
+            PERFORM UNTIL QUOTIENT < 1
+                ADD 1 to LIST-LEN
+                MOVE FUNCTION MOD(QUOTIENT, 2) TO CURRENT-CONVERTED-NUM-SMALL
+                MOVE CURRENT-CONVERTED-NUM-SMALL TO CHAR-ENTRY(LIST-LEN)
+                COMPUTE QUOTIENT = QUOTIENT / 2
+            END-PERFORM
+            MOVE 1 TO INDX
+            PERFORM VARYING INDX FROM LIST-LEN BY -1
+                UNTIL INDX < 1
+                DISPLAY CHAR-ENTRY(INDX) WITH NO ADVANCING
+            END-PERFORM
+        END-IF
+        IF IS-HEXADECIMAL IS NOT EQUAL TO 0
+            INSPECT USER-IN REPLACING LEADING "0x" BY "  "
+            MOVE FUNCTION TRIM(USER-IN) TO TRIMMED-INPUT
+            COMPUTE ACTUAL-LEN =
+               FUNCTION LENGTH(TRIMMED-INPUT)
+            PERFORM VARYING INDX FROM ACTUAL-LEN BY -1
+                UNTIL INDX < CAP
+                MOVE TRIMMED-INPUT(INDX:1) TO CURRENT-CHAR
+                IF CURRENT-CHAR NOT = SPACE
+                    IF CURRENT-CHAR IS ALPHABETIC
+                        EVALUATE CURRENT-CHAR
+                            WHEN "A"
+                                MOVE 10 TO CURRENT-NUM
+                            WHEN "B"
+                                MOVE 11 TO CURRENT-NUM
+                            WHEN "C"
+                                MOVE 12 TO CURRENT-NUM
+                            WHEN "D"
+                                MOVE 13 TO CURRENT-NUM
+                            WHEN "E"
+                                MOVE 14 TO CURRENT-NUM
+                            WHEN "F"
+                                MOVE 15 TO CURRENT-NUM
+                        END-EVALUATE
+                        COMPUTE CURRENT-CONVERTED-NUM = CURRENT-NUM * (16 ** EXPONENT)
+                        ADD 1 TO EXPONENT
+                        ADD 1 TO LIST-LEN
+                        STRING CURRENT-CONVERTED-NUM DELIMITED BY SIZE
+                            INTO CHAR-LIST
+                            WITH POINTER LIST-LEN
+                        COMPUTE MYSUM = MYSUM + CURRENT-CONVERTED-NUM
+                    ELSE
+                        IF CURRENT-CHAR IS NUMERIC
+                            MOVE CURRENT-CHAR TO CURRENT-NUM
+                            COMPUTE CURRENT-CONVERTED-NUM = CURRENT-NUM * (16 ** EXPONENT)
+                            ADD 1 TO EXPONENT
+                            ADD 1 TO LIST-LEN
+                            COMPUTE MYSUM = MYSUM + CURRENT-CONVERTED-NUM
+                        ELSE
+                            EXIT PERFORM
+                        END-IF
+                    END-IF
+                END-IF
+            END-PERFORM
+            COMPUTE QUOTIENT = FUNCTION NUMVAL(FUNCTION TRIM(MYSUM))
+            PERFORM UNTIL QUOTIENT < 1
+                ADD 1 to LIST-LEN
+                MOVE FUNCTION MOD(QUOTIENT, 2) TO CURRENT-CONVERTED-NUM-SMALL
+                MOVE CURRENT-CONVERTED-NUM-SMALL TO CHAR-ENTRY(LIST-LEN)
+                COMPUTE QUOTIENT = QUOTIENT / 2
+            END-PERFORM
+            MOVE 1 TO INDX
+            PERFORM VARYING INDX FROM LIST-LEN BY -1
+                UNTIL INDX < 1
+                DISPLAY CHAR-ENTRY(INDX) WITH NO ADVANCING
+            END-PERFORM
+        END-IF
+    END-IF.
+STOP RUN.
